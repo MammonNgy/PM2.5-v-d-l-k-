@@ -1,0 +1,86 @@
+# Nối dữ liệu PM2.5 và dữ liệu khí tượng:
+    
+## Nhap thu vien Python:
+    import pandas as pd
+    import numpy as np
+    
+## Nhap data khí tượng 7h sáng hoặc 7h tối:
+  ## Cấu trúc lệnh: data = pd. read_excel ('link den file excel hoac file csv.xlsx')
+    khituong = pd. read_excel('C:/Users/ADMIN/Documents/Zalo Received Files/Sounding_HCM/Sounding_19_19h_3500m_Use.xlsx')
+
+## Cách đọc thông tin data sau khi được nhập vào Python:
+    ## Dataframe (x, y): Dataframe - nghĩa là dữ liệu ở dạng cột và hàng, có tên cột và ID của hàng
+    ## x: số hàng dữ liệu của dataframe này
+    ## y: số cột dữ liệu của dataframe
+    
+############## CÁC BƯỚC XỬ LÝ DATA: 
+    
+## Data khí tượng được đo tại nhiều độ cao khác nhau, nhưng nghiên cứu chỉ cần dùng
+## các dữ liệu đo tại độ cao 10 m tính từ mặt đất nên fai lọc bộ data khituong.
+
+## Trong bộ data khituong, chỉ chọn các hàng dữ liệu có giá trị HGHT (độ cao) là 10:
+    khituong_10 = khituong [(khituong .HGHT .isin ([10]))]
+  ## khituong: tên bộ data cần lọc dữ liệu
+  ## .HGHT: nghĩa là chọn trong cột HGHT, cột này là 1 biến trong bộ data khituong
+  ## .HGHT .isin ([10]): nghĩa là chọn trong cột HGHT các giá trị là 10.
+
+## Nhập data PM2.5:
+    PM = pd. read_excel ('C:/Users/ADMIN/Documents/Zalo Received Files/Sounding_HCM/PM2.5_2019.xlsx')
+
+## Vì dữ liệu khí tượng được đo vào lúc 7h sáng và 7h tối nên để nối khí tượng và PM2.5
+## thì fai chọn các giá trị PM2.5 được đo vào lúc 7h sáng và 7h tối.
+## 7h sáng: 07, 7h tối: 19
+
+## Trong bộ dữ liệu PM, chọn các hàng dữ liệu có giá trị Hour là 7 (7h sáng), nếu làm
+## cho data 7h tối thì chọn giá trị Hour là 19.
+    PM_19 = PM [(PM .Hour .isin ([19]))]
+
+## Dữ liệu PM và khí tượng nối với nhau theo ngày:
+## Ví dụ giá trị PM ngày 1 tháng 1 sẽ được nối vào dữ liệu khí tượng của ngày 1 tháng 1.
+## tương tự như vậy cho các ngày còn lại trong năm.
+## Để nối dữ liệu, đầu tiên cần có cột ngày tháng giống nhau giữa 2 bộ dữ liệu 
+ ## PM_07 (PM 7h sáng) và khí tượng_10 
+ 
+## Trong bộ dữ liệu PM_07 đã có sẵn cột MD, là giá trị tháng/ngày (vd: 1/1, 1/2)
+## Trong bộ dữ liệu khituong_10 cũng đã có sẵn cột MM/DD, là giá trị tháng/ngày (vd: 1/1, 1/2)
+## Vì tên 2 cột này khác nhau nên Python sẽ ko hiểu để nối dữ liệu
+## >> fai sửa tên cột MM/DD thành MD để Python có thể hiểu và nối dữ liệu:
+    
+## Trong bộ dữ liệu khituong_10, sửa tên cột MM/DD thành MD:
+    khituong_10 = khituong_10 .rename (columns = {'MM/DD': 'MD'})
+    
+## khituong_10: đổi tên cột cho bộ dữ liệu khituong_10
+## .rename (): lệnh này dùng để đổi tên cột
+## columns = {'MM/DD': 'MD'}: MM/DD là tên cũ và MD là tên mới. Chú ý tên cột fai để trong dấu ''
+
+## Sau khi đổi tên thì tiến hành nối dữ liệu:
+    khituong_PM_19 = pd .merge (khituong_10, PM_19, how ="left", on=["MD"])
+    
+## .merge (): Dùng lệnh merge để nối 2 bộ dữ liệu
+## how = "left": nghĩa là nối PM_07 vào bên trái khituong_10
+## on = ["MD"]: nghĩa là dựa vào các giá trị giống nhau của cột 'MD' để nối.
+
+## Làm sạch dữ liệu sau khi nối: bỏ các cột ko cần thiết (vd ngày, tháng, năm,..)
+
+## Xem tên của các cột trong bộ dữ liệu:
+    khituong_PM_19 .columns
+
+## sau khi chạy lệnh này thì Python hiện ra tên của các cột.
+## Bỏ các cột ko cần thiết:
+    khituong_PM_19 = khituong_PM_19 .drop (columns =[ 'Hei_dif', 'Temp_dif', 'Atmos Stab', 'Intensity Inv.', 'Atmos Stab2', 'date', 'Year_y', 'Month_y', 'MY', 'DMY', 'Day_y'])
+    
+## lệnh này bỏ các cột tên trong ngoặc ''.
+
+## Gộp các hàng giá trị theo tháng và tính trung bình (mean), độ lệch chuẩn (standard deviation)    
+    group_thang_mean = khituong_PM_19 .groupby (['Month_x']) .mean()
+    group_thang_SD = khituong_PM_19 .groupby (['Month_x']) .std()
+         
+## Xuất dữ liệu từ Python thành file Excel:
+    khituong_PM_19 .to_excel ('C:/Users/ADMIN/Downloads/NEW FILE/khituong_PM_19.xlsx')
+    group_thang_mean .to_excel ('C:/Users/ADMIN/Downloads/NEW FILE/group_thang_mean_19.xlsx')
+    group_thang_SD .to_excel ('C:/Users/ADMIN/Downloads/NEW FILE/group_thang_SD_19.xlsx')
+    
+### Dữ liệu sau khi xuất sẽ dc dùng để vẽ đồ thị.
+### Làm tương tự như vậy cho data lúc 7h tối: nhập khí tượng đo lúc 19h và sửa dòng lệnh
+### PM_07 = PM [(PM .Hour .isin ([7]))] thành PM_07 = PM [(PM .Hour .isin ([19]))]
+
